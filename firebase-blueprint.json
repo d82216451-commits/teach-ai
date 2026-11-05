@@ -1,0 +1,76 @@
+{
+  "entities": {
+    "Teaching": {
+      "title": "Teaching",
+      "description": "A user-taught fact, preference, rule, or piece of knowledge for personalizing AI interactions.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who taught this fact or rule."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the teaching: personal, preference, rule, work, or general.",
+          "enum": ["personal", "preference", "rule", "work", "general"]
+        },
+        "content": {
+          "type": "string",
+          "description": "The exact fact, instruction, preference, or rule taught to the AI."
+        },
+        "importance": {
+          "type": "string",
+          "description": "Priority level of the teaching: normal, high, or core.",
+          "enum": ["normal", "high", "core"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": ["userId", "category", "content", "importance", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A conversational message exchanged between the user and the AI assistant.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the owning user."
+        },
+        "role": {
+          "type": "string",
+          "description": "The message author: user or model.",
+          "enum": ["user", "model"]
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the message."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        }
+      },
+      "required": ["userId", "role", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/teachings/{teachingId}": {
+      "schema": "Teaching",
+      "description": "Collection of user-taught personalization knowledge and instructions."
+    },
+    "/users/{userId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Collection of chat interaction history for cross-device synchronization."
+    }
+  }
+}

@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTeaching(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.category is string && (data.category == 'personal' || data.category == 'preference' || data.category == 'rule' || data.category == 'work' || data.category == 'general') &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
+             data.importance is string && (data.importance == 'normal' || data.importance == 'high' || data.importance == 'core') &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidMessage(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.role is string && (data.role == 'user' || data.role == 'model') &&
+             data.content is string && data.content.size() <= 10000 &&
+             (!('mediaType' in data) || data.mediaType is string) &&
+             (!('mediaUrl' in data) || data.mediaUrl is string) &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+      match /teachings/{teachingId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'category', 'content', 'importance', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'category', 'content', 'importance', 'createdAt', 'updatedAt']) &&
+                         isValidTeaching(incoming());
+
+        allow update: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidTeaching(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['category', 'content', 'importance', 'updatedAt']);
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /messages/{messageId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'role', 'content', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'role', 'content', 'mediaType', 'mediaUrl', 'createdAt']) &&
+                         isValidMessage(incoming());
+
+        allow update: if false;
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+  }
+}
